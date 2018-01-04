@@ -1,0 +1,215 @@
+/*
+ * Copyright 2012 The Netty Project
+ *
+ * The Netty Project licenses this file to you under the Apache License,
+ * version 2.0 (the "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at:
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+package pax.netty.coder;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.handler.codec.CorruptedFrameException;
+import io.netty.util.Attribute;
+import io.netty.util.AttributeKey;
+import org.apache.log4j.Logger;
+import pax.netty.data.*;
+import pax.netty.util.ByteUtils;
+import pax.netty.util.TransCode;
+import pax.util.AsyncConnector;
+import sand.utils.SSLService;
+import tool.dao.BizObject;
+
+import java.math.BigInteger;
+import java.util.List;
+
+import static org.bouncycastle.asn1.x500.style.RFC4519Style.ou;
+
+/**
+ * Decodes the binary representation of a {@link BigInteger} prepended
+ * with a magic number ('F' or 0x46) and a 32-bit integer length prefix into a
+ * {@link BigInteger} instance.  For example, { 'F', 0, 0, 0, 1, 42 } will be
+ * decoded into new BigInteger("42").
+ */
+public class MessageDecoder extends ByteToMessageDecoder {
+    static Logger logger = Logger.getLogger(MessageDecoder.class);
+
+    public final static AttributeKey<Request> cur_request_key = AttributeKey.newInstance("cur_request");
+    public final static AttributeKey<AsyncConnector> http_client_key = AttributeKey.newInstance("http_client");
+    public final static AttributeKey<List<BizObject>> total_files_list = AttributeKey.newInstance("files_list");
+
+    public final static AttributeKey<BizObject> cur_sn_key = AttributeKey.newInstance("cur_sn");
+
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+        System.out.println(" ByteBufUtil.hexDump = " + ByteBufUtil.hexDump(in));
+        System.out.println("ByteBuf size  = " + in.readableBytes());
+        logger.info("【MessageDecoder decode】ByteBuf size ：" + in.readableBytes() + ",ByteBuf:" + ByteBufUtil.hexDump(in));
+
+
+        // Wait until the length prefix is available.
+        if (in.readableBytes() < 5) {
+            System.out.println("<5 " + in.readableBytes());
+            return;
+        }
+
+        in.markReaderIndex();
+
+        // Check the magic number.
+        int magicNumber = in.readUnsignedByte();
+        //以0开头的
+        if (magicNumber == 0) {
+            in.resetReaderIndex();
+            if (in.readableBytes() > 100) {
+                GG gg = new GG(in);
+                out.add(gg);
+            } else {
+                //上送终端信息
+                GA0 ga0 = new GA0(in);
+                out.add(ga0);
+            }
+
+
+        } else {
+//        if (magicNumber != Message.STX) {
+//
+//            in.resetReaderIndex();
+//            throw new CorruptedFrameException("Invalid magic number: " + magicNumber);
+//        }
+
+            // Wait until the whole data is available.
+            //  short dataLength = in.readShort();//.readInt();
+
+//        int bcdlen = ByteUtils.int2BCD(dataLength);
+//        System.out.println("dataLength len is " + dataLength);
+//        System.out.println("bcdlen len is " + bcdlen);
+
+            byte dlen[] = new byte[2];
+
+            in.readBytes(dlen);
+            int dataLength = ByteUtils.byte2BCD(dlen);//.printHexString(dlen);
+//
+//        short dataLength=0;0
+            System.out.println("data len is " + dataLength);
+            //dataLength = bcdlen;
+            //+2,是etx和lrc
+            if (in.readableBytes() < dataLength + 2) {
+                System.out.println(" reset return " + in.readableBytes());
+                in.resetReaderIndex();
+                return;
+            }
+
+            // Convert the received data into a new BigInteger.
+//        byte[] decoded = new byte[dataLength];
+//        in.readBytes(decoded);
+
+
+            //如果是request，那么放入context
+            System.out.println("datalenth is " + dataLength);
+
+            if (dataLength > 1000) {
+                Attribute<List<BizObject>> files_list = ctx.channel().attr(total_files_list);
+                List<BizObject> flist = files_list.get();
+                System.out.println("flist = " + flist);
+
+                System.out.println("---解码A1指令---");
+                ToDllMsg toDllMsg = new ToDllMsg(in);
+                out.add(toDllMsg);
+
+
+            } else if (dataLength == 155) {
+
+
+                Request request = new Request(in);
+                out.add(request);
+
+
+                Attribute<Request> cur_request = ctx.channel().attr(cur_request_key);
+
+                cur_request.set(request);
+
+                //dcu_attr.set(dcu);  //将dcu放入上下文  dcu 里面有 channel ,channel里面又有dcu，会不会有问题
+                System.out.println("datalenth is over 128");
+            } else {
+
+                Attribute<Request> cur_request = ctx.channel().attr(cur_request_key);
+
+                Request currequest = cur_request.get();//.set(request);
+
+                if (currequest != null && currequest.code == TransCode.REMOTE_PROGRAM_DOWNLOAD && dataLength == 121) {
+                    Remote_download_out remote_download_out = new Remote_download_out(in);
+                    out.add(remote_download_out);
+                    System.out.println("datalenth is 121");
+                } else if (currequest != null && currequest.code == TransCode.REMOTE_PROGRAM_DOWNLOAD && dataLength == 94) {
+                    Remote_download_in remote_download_in = new Remote_download_in(in);
+                    out.add(remote_download_in);
+                    System.out.println("datalenth is 94");
+                } else if (currequest != null && currequest.code == TransCode.LOCAL_INIT && dataLength == 78) {
+                    System.out.println("初始化请求。。。。");
+
+
+                    A0Msg a0Msg = new A0Msg(in);
+                    out.add(a0Msg);
+
+
+                } else if (currequest != null && dataLength == 36) {
+                    System.out.println("---解码A2指令---");
+                    A2Msg a2Msg = new A2Msg(in);
+                    out.add(a2Msg);
+
+
+                } else if (currequest != null && dataLength == 12) {//02 00 12 60 00 03 00 00 02 00 02 A4 00 A4 03 03 72
+                    System.out.println("---解码A4指令---");
+                    A4Msg a4Msg = new A4Msg(in);
+                    out.add(a4Msg);
+
+
+                } else {
+
+                    System.out.println("=====未知请求，暂时无法解码==== ");
+//                byte[] data=new byte[dataLength];
+//                in.readBytes(data);
+                    System.out.println("in = " + in);
+//                FileMsg fileMsg = new FileMsg(in);
+//                out.add(fileMsg);
+//                System.out.println("trans code  is " + currequest.code);
+//                System.out.println("datalen is " + dataLength);
+
+                    //TODO dll server 解码
+                    A4Msg a4Msg = new A4Msg(in);
+                    out.add(a4Msg);
+
+                    //透传
+//                callDecode(ctx, in, out);
+                }
+
+            }
+
+            System.out.println(" in readable bytes is  " + in.readableBytes());
+            byte etx = in.readByte();
+            byte lrc = in.readByte();
+            System.out.println("decoder  lrc = " + lrc);
+//
+            if (etx != Message.ETX)
+                System.out.print("wrong etx " + etx);
+
+            System.out.println("---out decoder---");
+        }
+    }
+
+//    @Override
+//    protected void callDecode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+//        super.callDecode(ctx, in, out);
+//    }
+}

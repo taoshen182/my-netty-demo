@@ -1,0 +1,33 @@
+NioEventLoopGroup
+是用来处理I/O操作的多线程事件循环器。
+
+Netty提供了许多不同的EventLoopGroup的实现用来处理不同的传输协议
+
+boss  --->  用来接收进来的连接
+worker ---> 用来处理已经被接受的连接
+
+一旦boss接收到连接，就会把连接信息注册到worker上
+
+
+ServerBootstrap是一个启动NIO服务的辅助启动类
+
+
+ChannelInitializer是一个特殊的处理类，
+是帮助使用者配置一个新的channel
+
+
+ByteToMessageDecoder是ChannelHandler的一个实现类
+
+
+ChannelHandlerContext对象提供了许多操作，可以触发各种各样的I/O事件和操作。
+write()方法不会是消息写入通道上，而是在缓冲区内，当调用flush()方法把缓冲区数据强行输出。
+
+或者使用writeAndFlush(msg)已达到同样的目的
+
+
+一个ChannelFuture对象代表了一个还没有发生的I/O操作
+Netty里所有的操作都是异步的
+
+
+Channel分为两类：SelectableChannel（网络读写的）和FileChannel（文件操作的）
+ServerSocketChannel和SocketChannel都是SelectableChannel的子类

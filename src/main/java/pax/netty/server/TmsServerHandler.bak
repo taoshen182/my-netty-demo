@@ -1,0 +1,808 @@
+/*
+ * Copyright 2012 The Netty Project
+ *
+ * The Netty Project licenses this file to you under the Apache License,
+ * version 2.0 (the "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at:
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+package pax.netty.server;
+
+import io.netty.buffer.ByteBufUtil;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.internal.tcnative.SSL;
+import io.netty.util.Attribute;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.log4j.Logger;
+import org.apache.poi.util.ArrayUtil;
+import org.jpos.iso.ISOUtil;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+import pax.netty.data.*;
+import pax.netty.dll_client.DllClient;
+import pax.netty.util.ByteUtils;
+import pax.netty.util.TransCode;
+import pax.service.appversion.AppVersionService;
+import pax.service.inst.InstService;
+import pax.service.merchant.MerchantService;
+import pax.service.terminals.TerminalsService;
+import pax.service.tertype.TerTypeService;
+import pax.util.AsyncConnector;
+import sand.actionhandler.system.ActionHandler;
+import sand.utils.JsonTool;
+import sand.utils.SSLService;
+import tool.dao.BizObject;
+import tool.dao.QueryFactory;
+
+import javax.net.ssl.SSLException;
+import java.math.BigInteger;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import static javafx.scene.input.KeyCode.J;
+import static pax.netty.coder.MessageDecoder.*;
+import static sand.utils.SSLService.post;
+import static tool.util.DateTime.getTime;
+
+/**
+ * Handler for a server-side channel.  This handler maintains stateful
+ * information which is specific to a certain channel using member variables.
+ * Therefore, an instance of this handler can cover only one channel.  You have
+ * to create a new handler instance whenever you create a new channel and insert
+ * this handler  to avoid a race condition.
+ */
+public class TmsServerHandler extends SimpleChannelInboundHandler<Message> {
+    static Logger logger = Logger.getLogger(TmsServerHandler.class);
+
+    private BigInteger lastMultiplier = new BigInteger("1");
+    private BigInteger factorial = new BigInteger("1");
+
+    private ChannelHandlerContext ctx;
+//    private SSLService sslService;
+
+    private TerminalsService terminalsService;
+    private InstService instService;
+    private AppVersionService appVersionService;
+    private TerTypeService terTypeService;
+
+    //    static String dll_server_url = "http://113.204.232.6:24019";
+    public static String dll_server_url = "http://localhost:8282/basic.LoginAH.test";
+
+    {
+        appVersionService = (AppVersionService) WebApplicationContextUtils.getWebApplicationContext(ActionHandler._context).getBean("appVersionService");
+        terminalsService = (TerminalsService) WebApplicationContextUtils.getWebApplicationContext(ActionHandler._context).getBean("terminalsService");
+        instService = (InstService) WebApplicationContextUtils.getWebApplicationContext(ActionHandler._context).getBean("instService");
+        terTypeService = (TerTypeService) WebApplicationContextUtils.getWebApplicationContext(ActionHandler._context).getBean("terTypeService");
+    }
+
+
+    /**
+     * 发送远程下载请求
+     */
+    private void sendRemoteDownloadRequest() {
+
+        System.out.println("send remote download request");
+        // Do not send more than 4096 numbers.
+        Request r = new Request("send my file".getBytes());
+
+        Attribute<Request> cur_request = ctx.channel().attr(cur_request_key);
+
+        cur_request.set(r);
+
+        ctx.write(r);
+        ctx.flush();
+    }
+
+    /**
+     * 发送文件
+     */
+    private void sendFile() {
+
+        System.out.println("send my file");
+        byte[] bytes = FileMsg.File2byte("C:\\Users\\want\\Desktop\\docker.txt");
+        System.out.println("my file bytes length: " + bytes.length);
+        // Do not send more than 4096 numbers.
+        FileMsg file = new FileMsg(bytes);
+
+
+        ctx.write(file);
+        ctx.flush();
+    }
+
+
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) {
+
+        this.ctx = ctx;
+        //sendRemoteDownloadRequest();
+        //sendNumbers();
+    }
+
+    @Override
+    public void channelRead0(ChannelHandlerContext ctx, Message msg) throws Exception {
+        // Calculate the cumulative factorial and send it to the client.
+//        lastMultiplier = msg;
+//        factorial = factorial.multiply(msg);
+        System.out.println("msg = " + msg);
+
+
+//        Channel c;
+//        c.writeAndFlush();
+
+        if (GG.class.isInstance(msg)) {
+            System.out.println("=== 处理GG === ");
+
+            GG msg1 = (GG) msg;
+
+
+//            GG gg = new GG(msg1.getTpdu(), msg1.getVer(), msg1.getCode(), msg1.getSn(), "01".getBytes());
+            byte[] tpdu = new byte[]{0x60, 0x00, 0x60, 0x00, 0x00};
+            GG gg = new GG(msg1.getTpdu(), msg1.getVer(), msg1.getCode(), msg1.getSn(), "00".getBytes());
+
+
+            ctx.writeAndFlush(gg);
+//            交易码	n4	标识交易类型：7004：初始化下载交易
+//            设备序列号	ans50	不足右补0x20
+//            响应码	ans2	参见附录C
+
+        }
+        if (GA0.class.isInstance(msg)) {
+            System.out.println("第二次应答");
+            GA0 msg1 = (GA0) msg;
+
+            //00 0B
+//            60 00 00 06 32
+//            02
+//            00 01 A0 A0 03
+//            00 00
+            byte[] len = {0x00, 0x0B};
+            byte[] cmd = {0x02, 0x00, 0x01, (byte) 0xA0, (byte) 0xA0, 0x03};
+            GA0 reply = new GA0(len, msg1.getTpdu(), cmd, "00".getBytes());
+            ctx.writeAndFlush(reply);
+        }
+
+        if (Request.class.isInstance(msg)) {
+
+
+            Request r = (Request) msg;
+            System.out.println("find  request " + r);
+            System.out.println("client request code is  " + r.code);
+            if (r.code == TransCode.REMOTE_PROGRAM_DOWNLOAD) {
+                r.calDWK1();
+                r.calTAC1();
+
+//                JDO jdo = new JDO();
+//
+//                BizObject b = new BizObject("aaa");
+//                jdo.update(b);
+//                QueryFactory qf =  b.getQF();
+//                qf.query();
+//
+//                        finally{
+//                    jdo.close();
+//                }
+
+
+                Remote_download_out rdo = new Remote_download_out(r.TAC_1, r.DWK_1);
+
+                //rdo.createSDATA();
+                r.calSAC0(rdo.s_data);
+                r.copyInfoTo(rdo);
+
+                ctx.write(rdo);
+                ctx.flush();
+
+
+//                String dwk = DESCoder.initKey();
+//                r.DWK = dwk;  //设置工作秘钥
+
+
+            } else if (r.code == TransCode.LOCAL_INIT) {
+                System.out.println("第一次---应答POS初始化。。。。");
+
+
+                //获取连接dll server的channel
+//                Channel dllChannel = getDllChannel(ctx);
+//                BizObject biz = new BizObject();
+//                byte[] cmd = {(byte) 0xA0};
+//                byte[] tpdu = {0x60, 0x00, 0x03, 0x00, 0x00};
+//                byte[] ver = {0x30, 0x31};
+//                byte[] fid = {0x50, 0x41, 0x58, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20};
+//                byte[] mid = {0x50, 0x41, 0x58, 0x20, 0x53, 0x35, 0x30, 0x30, 0x20, 0x45, 0x46, 0x54, 0x2D, 0x50, 0x4F, 0x53, 0x20, 0x20, 0x20, 0x20};
+//                byte[] sn = {0x36, 0x35, 0x30, 0x30, 0x30, 0x35, 0x36, 0x32, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+//                        0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20};
+//                byte[] version = {0x30, 0x32};
+//
+//                String str_fid = ByteUtils.byte2String(fid).trim();//获取厂商标识
+//                String str_mid = ByteUtils.byte2String(mid).trim();//获取终端型号标识
+//                String str_sn = ByteUtils.byte2String(sn).trim();//获取sn
+//                String str_version = ByteUtils.byte2String(version).trim();//获取版本号
+//
+//                biz.set("cmd", ISOUtil.hexString(cmd));
+//                biz.set("tpdu", ISOUtil.hexString(tpdu));
+//                biz.set("ver", ISOUtil.hexString(ver));
+//                biz.set("fid", ISOUtil.hexString(fid));
+//                biz.set("mid", ISOUtil.hexString(mid));
+//                biz.set("sn", ISOUtil.hexString(sn));
+//                biz.set("version", ISOUtil.hexString(version));
+//                dllChannel.writeAndFlush(biz);
+
+
+                PosMsg posMsg = (PosMsg) msg;
+
+                String sn = posMsg.getSN();//sn      带空格
+                String fid = posMsg.getFID();//厂商    带空格
+                String mid = posMsg.getMID();//终端型号 带空格
+
+                InitMsg initMsg = new InitMsg();
+                posMsg.copyInfoTo(initMsg);
+
+
+                //TODO 验证sn号是否存在，以及其他信息是否正确
+                BizObject terminal = terminalsService.getTerminal(mid.trim(), sn.trim(), fid.trim());
+                if (terminal != null) {
+                    initMsg.setCode(TransCode.getCodeByte(TransCode.SUCCESS));
+                    logger.info("【TmsServerHandler 应答POS初始化】initMsg" + initMsg);
+
+                    terminal.set("termInfo", mid + sn);//终端型号信息(20B)+硬件序列号(38B)
+
+                    //将sn记录下来
+                    Attribute<BizObject> cur_sn_attr = ctx.channel().attr(cur_sn_key);
+                    cur_sn_attr.set(terminal);
+                    ctx.write(initMsg);
+                    ctx.flush();
+                } else {
+                    initMsg.setCode(TransCode.getCodeByte(TransCode.ERROR_SN));
+                    logger.info("【TmsServerHandler 应答POS初始化】initMsg" + initMsg);
+                    ctx.write(initMsg);
+                    ctx.flush();
+                }
+
+
+            } else {
+                logger.info("【TmsServerHandler 应答POS初始化】暂无该请求码的服务" + r.code);
+            }
+
+        }
+
+        if (Remote_download_in.class.isInstance(msg)) {
+
+            Attribute<Request> cur_request = ctx.channel().attr(cur_request_key);
+
+            Request currequest = cur_request.get();//.set(request);
+
+            Remote_download_in r = (Remote_download_in) msg;
+
+            System.out.println("find  remote download in " + r);
+            ByteUtils.printHexString(r.return_code);
+            byte[] success = {0x00, 0x00};
+
+            if (!ByteUtils.compareByteArray(r.return_code, success)) {
+                //if(r.return_code!=0){
+
+                System.out.println("tms认证" +
+                        "失败");
+                return;  //pos认证失败
+            } else if (ByteUtils.compareByteArray(r.sac_1, currequest.SAC_0)) {
+
+                System.out.println("tms" +
+                        "认证通过");
+                //认证通过
+                //  ...............................send file
+
+//                sendFile();
+
+
+            } else {
+
+                ByteUtils.printHexString(r.sac_1);
+                ByteUtils.printHexString(currequest.SAC_0);
+                System.out.println(" ............ ");
+                return;
+            }
+        }
+
+
+        if (A0Msg.class.isInstance(msg)) {
+            System.out.println("第二次---应答POS（A0指令）。。。。");
+            A0Msg a0Msg = (A0Msg) msg;
+
+            //TODO 发送http post 请求
+//            String url = "http://113.204.232.6:24019";// 方杰的接口
+//            String url = "http://localhost:8282/basic.LoginAH.test";
+
+
+//            SSLService sslService = new SSLService();
+//            sslService.setConnectTimeout(10000);
+
+            Attribute<BizObject> cur_sn_attr = ctx.channel().attr(cur_sn_key);
+            BizObject terminal = cur_sn_attr.get();
+            String sn = terminal.getString("sn");
+            String ter_type_id = terminal.getString("ter_type_id");
+
+            BizObject ter_type = terTypeService.getById(ter_type_id);
+
+
+//
+            String program_path = terminal.getString("program_path");//   如：/PAX/S500/
+            BizObject inst = instService.getById(terminal.getString("inst_id"));
+            String home_path = inst.getString("home_path");// 如： /home/tms/app/000100
+            String appUrl = home_path + program_path;
+
+            String dll_path = ter_type.getString("dll_path");
+//            file.set("taskType", "5"); //任务类型	taskType
+//            file.set("appType", "5"); ////应用类型	appType
+//            file.set("appName", bizObject.getString("app_name")); // 应用名称	appName 1 "SCRIPTPOS2(vSXXV140418XHB)_sig"
+//            file.set("appVer", bizObject.getString("app_ver_code"));// 应用版本号	appVer 1 "SXXV140418XHB"
+//
+//            file.set("appUrl", appUrl); // 应用文件路径	appUrl
+////            file.set("appUrl", ActionHandler.OS_TYPE.equals("windows") ? System.getProperty("user.home") : appUrl); // 应用文件路径	appUrl
+//            file.set("paramUrl", appUrl);  // 参数文件路径	paramUrl
+//            file.set("menuNo", 1);  // 菜单序号	menuNo
+//            file.set("operTime", "0");  // 应用更新时间	operTime
+
+
+            BizObject ret = new BizObject();
+
+            ret.set("dllName", dll_path.substring(dll_path.lastIndexOf("/") + 1, dll_path.lastIndexOf(".so")));//            动态库名称	dllName
+            ret.set("logLvl", "2");//            日志级别	logLvl
+            ret.set("logUrl", "/home/dllserver/log/pax.log");//            日志文件路径	logUrl
+            ret.set("termInfo", terminal.getString("termInfo"));//            终端信息	termInfo
+//            ret.set("scheduleInfo", "1");//            下载进度信息	scheduleInfo
+            ret.set("appUrl", appUrl);//            应用路径	appUrl
+
+
+            //TODO 获取相应的应用列表
+            List<BizObject> appList = appVersionService.getAppList(ter_type_id);
+            for (BizObject app : appList) {
+                app.set("appType", "02");//            应用程序 更新方式	appType
+                app.set("appParaType", "02");//            应用参数 更新方式	appParaType
+//                appInfo.set("appName", app_file.getString("app_name"));//            应用名称	appName
+//                appInfo.set("appVer", app_file.getString("app_ver_code"));//            应用版本号	appVer
+
+            }
+            logger.info("【下载应用信息】" + appList);
+
+            ret.set("appInfo", appList);
+            ret.set("appNum", appList.size());//            应用个数	appNum
+            //交易码	TransID
+            ret.set("TransID", TransCode.DLL_SERVER_LOAD.getCode());//加载动态库 00000
+            // 交易日期	TransDate
+            ret.set("TransDate", getDateAndTime()[0]);
+            // 交易时间	TransTime
+            ret.set("TransTime", getDateAndTime()[1]);
+
+            String content = ret.toJsonString();
+            logger.info("【TmsServerHandler 应答POS（A0指令）】httpclient dll_server_url : " + dll_server_url + " ,send data : " + content);
+//            String json = sslService.sendRequest(url, content);
+            Object json = getHttpClient(true).post(dll_server_url, content);
+//            Object json = getHttpClient().post(dll_server_url, content, false);
+            logger.info("【TmsServerHandler 应答POS（A0指令）】httpclient return data : " + json);
+
+            if (json != null) {
+                BizObject response = JsonTool.toBiz(json.toString());
+                logger.info("【TmsServerHandler 应答POS（A0指令）】httpclient return biz : " + response);
+                System.out.println("response = " + response);
+                String termInfo = response.getString("termInfo");//            终端信息	termInfo
+
+                if (!ctx.channel().attr(cur_sn_key).get().getString("termInfo").equals(termInfo)) {
+                    System.out.println("wrong termInfo = " + termInfo);
+                }
+
+                String respCode = response.getString("respCode");//            应答码	respCode
+                if (!"00".equals(respCode)) {
+                    System.out.println("wrong respCode = " + respCode);
+                }
+
+                String respMsg = response.getString("respMsg");//            应答描述	respMsg
+                System.out.println("respMsg = " + respMsg);
+                String gbk = new String(respMsg.getBytes("gbk"), "utf-8");
+                System.out.println("utf-8 respMsg = " + gbk);
+
+                String TransID = response.getString("TransID");//            交易码	TransID
+                if (!TransCode.DLL_SERVER_LOAD.getCode().equals(TransID)) {
+                    System.out.println("wrong TransID = " + TransID);
+                }
+
+                String TransDate = response.getString("TransDate");//            交易日期	TransDate
+
+                String TransTime = response.getString("TransTime");//            交易时间	TransTime
+            }
+
+            String dataInfo = a0Msg.getDataInfo();//得到指令系统信息
+
+            A0Msg a0msg_reply = new A0Msg(a0Msg.getTpdu(), a0Msg.getCmd(), null);
+            ctx.write(a0msg_reply);
+            ctx.flush();
+
+
+//            Channel dllChannel = getDllChannel(ctx);
+//            BizObject biz = new BizObject();
+//            biz.set("cmd", ISOUtil.hexString(cmd));
+//            biz.set("tpdu", ISOUtil.hexString(tpdu));
+//            dllChannel.writeAndFlush(biz);
+
+
+//            SocketChannel channel = (SocketChannel) ctx.channel();
+
+
+//            int i = Tms_Download.instanceDll.TMS_DownLoad(ctx., '2', '2', '2');
+//            System.out.println("i = " + i);
+            // 02 00 11
+            // 60 00 03 00 00
+            // 02 00 01 A0 A0 03 03 71
+
+
+//            DllMsg reply_dllMsg = new DllMsg(tpdu, cmd, null);
+//
+//            byte[] dllMsgByte1 = reply_dllMsg.getDllMsgByte();
+//            ByteUtils.printHexString(dllMsgByte1);
+//
+//            ctx.write(reply_dllMsg);
+//            ctx.flush();
+
+
+            //应答 0xA0  --->  0xA0+数据内容0字节
+            //     0xA1  ---->  0xA1+ 总文件个数(1byte)  +已收到文件个数(1byte)
+
+        }
+
+        if (ToDllMsg.class.isInstance(msg)) {
+
+            ToDllMsg toDllMsg = (ToDllMsg) msg;
+            System.out.println("toDllMsg = " + toDllMsg);
+            //TODO 发送http post 请求
+            BizObject ret = new BizObject();
+
+
+            ret.set("termInfo", ctx.channel().attr(cur_sn_key).get().getString("termInfo"));  //                终端信息	termInfo
+            ret.set("data", "0207dca14400554d535f55544d535f4d00000000000055302e38392d323500000000000000000100000000000000000000000000000000a703");//                数据	data
+            ret.set("TransID", TransCode.DLL_SERVER_DOWNLOAD.getCode());//                交易码	TransID
+            ret.set("TransDate", getDateAndTime()[0]);//                交易日期	TransDate
+            ret.set("TransTime", getDateAndTime()[1]); //                交易时间	TransTime
+
+            String content = ret.toJsonString();
+            logger.info("【TmsServerHandler 应答POS（ToDllMsg）】httpclient send data : " + content);
+
+            AsyncConnector httpClient = getHttpClient(false);
+            if (httpClient == null) {
+                System.out.println("请先加载动态库 httpClient = " + httpClient);
+            } else {
+                Object json = httpClient.post(dll_server_url, content);
+                logger.info("【TmsServerHandler 应答POS（ToDllMsg）】httpclient return data : " + json);
+            }
+        }
+
+        if (A1Msg.class.isInstance(msg)) {
+            System.out.println("第三次---应答POS（A1指令）。。。。");
+            A1Msg a1Msg = (A1Msg) msg;
+
+
+            //长度 13  02
+            // 00 13
+            // 60 00 03 00 00
+            // 02 00 03
+            // A1 1D 1D
+            // A1 03
+            // 03 71
+
+            byte[] cmd = a1Msg.getCmd();//得到指令
+            byte[] tpdu = a1Msg.getTpdu();//得到tpdu
+
+            Attribute<List<BizObject>> files_list_attr = ctx.channel().attr(total_files_list);
+            //得到原来存放的值；
+            List<BizObject> file_list_old = files_list_attr.get();
+            if (file_list_old == null) file_list_old = new ArrayList<>();
+
+
+            //得到总数量
+            int all_file_count = a1Msg.getFile_count();
+            System.out.println("all_file_count = " + all_file_count);
+
+            //得到文件list
+            List<BizObject> files = a1Msg.getFiles();
+
+            if (file_list_old.size() < all_file_count && files.size() < all_file_count && file_list_old.size() + files.size() <= all_file_count) {
+                file_list_old.addAll(files);
+                files_list_attr.set(file_list_old);
+            }
+
+            Attribute<List<BizObject>> afer_file_list_attr = ctx.channel().attr(total_files_list);
+            List<BizObject> the_afer_file_list = afer_file_list_attr.get();
+
+
+            if (the_afer_file_list.size() == all_file_count) {
+                System.out.println("全部文件：" + the_afer_file_list);
+                afer_file_list_attr.set(new ArrayList<>());//收集完了清0
+
+            }
+            //TODO 发送http post 请求
+            BizObject ret = new BizObject();
+            String hexA1 = ByteBufUtil.hexDump(a1Msg.getBuf());
+            System.out.println(hexA1);
+
+            ret.set("termInfo", ctx.channel().attr(cur_sn_key).get().getString("termInfo"));  //                终端信息	termInfo
+            ret.set("data", hexA1);//                数据	data
+            ret.set("TransID", TransCode.DLL_SERVER_DOWNLOAD.getCode());//交易码	TransID
+            ret.set("TransDate", getDateAndTime()[0]);//                交易日期	TransDate
+            ret.set("TransTime", getDateAndTime()[1]); //                交易时间	TransTime
+
+            String content = ret.toJsonString();
+            logger.info("【TmsServerHandler 应答POS（A1指令）】httpclient send data : " + content);
+//            Object json = getHttpClient().sendRequest(dll_server_url, "application/json", content, null);
+//            logger.info("【TmsServerHandler 应答POS（A1指令）】httpclient return data : " + json);
+
+
+            A1Msg reply_a1Msg = new A1Msg(tpdu, cmd, all_file_count, the_afer_file_list.size());
+            logger.info("【TmsServerHandler 应答POS（A1指令）】reply pos : " + reply_a1Msg);
+            ctx.write(reply_a1Msg);
+            ctx.flush();
+        }
+
+        if (A2Msg.class.isInstance(msg)) {
+            System.out.println("第四次---应答POS（A2指令）。。。。");
+            A2Msg a2Msg = (A2Msg) msg;
+            System.out.println("a2Msg = " + a2Msg);
+            byte[] cd = a2Msg.getCmd();
+
+            //获取当前的终端
+            Attribute<BizObject> cur_sn_attr = ctx.channel().attr(cur_sn_key);
+            BizObject terminal = cur_sn_attr.get();
+            //获取任务列表
+            //  BizObject ret = new BizObject();
+
+            // ret.set("TransID", TransCode.DLL_SERVER_DOWNLOAD.getCode());// 交易码	应用下载
+
+            //   ret.set("TransDate", date_str[0]);// 交易日期	TransDate
+            //    ret.set("TransTime", date_str[1]);// 交易时间	TransTime
+
+
+            //   String content = ret.toJsonString();
+            //    logger.info("【TmsServerHandler 应答POS（A1指令）】httpclient send data : " + content);
+            //   Object json = getHttpClient().sendRequest(dll_server_url, "application/json", content, null);
+            //   logger.info("【TmsServerHandler 应答POS（A1指令）】httpclient return data : " + json);
+
+
+//            char CommType = 0x02;
+//            char[] DownInfo = null;
+//            char[] ret_info = new char[30];  //下载结果返回信息，小于40个char
+//
+//            char[] ProgFile = new char[255];//255  多应用时不用
+//            char[] ParaFile = new char[255];           //255
+//
+//            char[] tertype = {0x50, 0x41, 0x58, 0x20, 0x53, 0x35, 0x30, 0x30, 0x20, 0x45,
+//                    0x46, 0x54, 0x2D, 0x50, 0x4F, 0x53, 0x20, 0x20, 0x20, 0x20};//20 终端型号信息
+//
+//            char[] sn = {
+//                    0x36, 0x35, 0x30, 0x30, 0x30, 0x35, 0x36, 0x32, 0x20, 0x20,  //40 sn号
+//                    0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+//                    0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+//                    0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20
+//            };
+//
+//            System.out.println(" =============tertype================ ");
+//            for (char ddd : tertype) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============tertype================ ");
+//            System.out.println(" =============sn================ ");
+//            for (char ddd : sn) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============sn================ ");
+//
+//            char[] rest = new char[255 - 20 - 40];
+//            char[] chars10 = ArrayUtils.addAll(tertype, sn);
+//            ParaFile = ArrayUtils.addAll(rest, chars10);
+//
+//
+//            System.out.println(" =============ParaFile================ ");
+//            for (char ddd : ParaFile) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============ParaFile================ ");
+//
+//
+//            // 255  终端型号信息(20B)+硬件序列号(38B)
+//            char DataFile[] = new char[255];            //255  多应用时不用
+//
+//            String path = "C:\\Users\\want\\Desktop\\dllfile";
+//            char[] OtherFile = new char[255];            // 255  全部应用保存的文件夹地址
+//            for (int i = 0; i < path.length(); i++) {
+//                OtherFile[i] = path.charAt(i);
+//            }
+//            System.out.println(" =============OtherFile================ ");
+//            for (char ddd : OtherFile) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============OtherFile================ ");
+//
+//            char Type = 0x00;                  //1  下载类型
+//            char AppSum[] = {0x00, 0x00, 0x01};               //3  终端的应用个数
+//
+//
+//            char[] AppInfoS = new char[50 + 32 + 2 + 2 + 14 + 14 + 2 + 14];            //  	终端应用信息
+//
+//            char[] app_name = "Aptestfile1234567890123456789012345678901234567890".toCharArray();  //50  应用名称，原0.85版本为20字节
+//            System.out.println(" =============app_name================ ");
+//            for (char ddd : app_name) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============app_name================ ");
+//
+//
+//            char[] app_edition = new char[32];        //32  应用版本信息
+//
+//            System.out.println(" =============app_edition================ ");
+//            for (char ddd : app_edition) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============app_edition================ ");
+//
+//            char[] app_update = {0x00, 0x01};        //2  应用程序更新方式
+//            char[] app_para_update = {0x00, 0x00};  //2 应用参数更新方式
+//            char[] app_down_time = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   //14 保留数据，此字段置为全0x00,目前不用
+//            char[] app_update_time = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};    //14 保留数据，目前不用
+//            char[] app_Enable = {0x00, 0x00};        //2  保留
+//            char[] other = new char[14];            //14  保留数据（0X01—强制更新,0x00—结算更新）
+//
+//
+//            char[] chars = ArrayUtils.addAll(app_name, app_edition);
+//            char[] chars1 = ArrayUtils.addAll(chars, app_update);
+//            char[] chars2 = ArrayUtils.addAll(chars1, app_para_update);
+//            char[] chars3 = ArrayUtils.addAll(chars2, app_down_time);
+//            char[] chars4 = ArrayUtils.addAll(chars3, app_update_time);
+//            char[] chars5 = ArrayUtils.addAll(chars4, app_Enable);
+//            AppInfoS = ArrayUtils.addAll(chars5, other);
+//
+//            System.out.println(" =============AppInfoS================ ");
+//            for (char ddd : AppInfoS) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============AppInfoS================ ");
+//
+//            //拼接downloadinfo
+//            char[] chars6 = ArrayUtils.addAll(ProgFile, ParaFile);
+//            char[] chars7 = ArrayUtils.addAll(chars6, DataFile);
+//            char[] chars8 = ArrayUtils.addAll(chars7, OtherFile);
+//            char[] chars9 = ArrayUtils.addAll(chars8, Type);
+//            DownInfo = ArrayUtils.addAll(chars9, AppInfoS);
+//            System.out.println(" =============DownInfo================ ");
+//            for (char ddd : DownInfo) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============DownInfo================ ");
+//
+//            File file = new File("C:\\Users\\want\\Desktop\\testTms.txt");
+//            FileOutputStream outputStream = new FileOutputStream(file);
+//            FileDescriptor fd = outputStream.getFD();
+//
+//            int i = Tms_Download.instanceDll.TMS_DownLoad(fd, CommType, DownInfo, ret_info);
+//            System.out.println("i = " + i);
+//            System.out.println(" =============ret_info================ ");
+//            for (char ddd : ret_info) {
+//                System.out.print(CharUtils.toString(ddd));
+//            }
+//            System.out.println(" =============ret_info================ ");
+
+
+            //去请求DLL服务器
+//            TcpClient tcpClient = new TcpClient("172.25.14.165", 7788);
+//            NetworkStream stream = tcpClient.GetStream();//通过网络流进行数据的交换
+//
+//            stream.Write(data, 0, data.Length);
+//            stream.Close();
+//            tcpClient.Close();
+
+
+            //应答
+            //连接dll服务器
+//            DllClient dll = new DllClient();
+//
+//
+//            Channel run = dll.run(DllClient.HOST, DllClient.PORT, ctx.channel());
+//
+//            if (run != null) {
+//                Attribute<Channel> channel = ctx.channel().attr(dll_client_key);
+//                channel.set(run);
+//
+//                A4Msg a4Msg = new A4Msg(a2Msg.getTpdu());
+//
+//                //TODO 从 TMS Handler 向 DLL Server 发送消息
+//                ChannelPromise promise = new DefaultChannelPromise(run);
+//                run.write(a4Msg, promise);
+//                run.flush();
+//
+//
+//                ChannelId id = run.id();
+//                String s = id.asLongText();
+//                System.out.println("s = " + s);
+//
+//                boolean b = promise.trySuccess();
+//                System.out.println("b = " + b);
+//
+//            }
+
+
+            A2MsgReply a2MsgReply = new A2MsgReply(cd, a2Msg.getTpdu());
+            ctx.write(a2MsgReply);
+
+
+        }
+        //ctx.writeAndFlush(factorial);
+    }
+
+    private String[] getDateAndTime() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+        String date = dateFormat.format(new Date());
+        return date.split(" ");
+    }
+
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        System.err.printf("inactive  Factorial of %,d is: %,d%n", lastMultiplier, factorial);
+
+        //TODO 异常，关闭http client
+//        Attribute<SSLService> channel = ctx.channel().attr(http_client_key);
+//        SSLService sslService = channel.get();
+//        if (sslService != null) {
+//            sslService.
+//            System.out.println("TmsServer shutdown a dll client channel .... isOpen = " + chan.isOpen());
+//
+//        }
+        ctx.close();
+
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        cause.printStackTrace();
+        ctx.close();
+    }
+
+
+    private AsyncConnector getHttpClient(boolean flag) {
+        Attribute<AsyncConnector> http_client = ctx.channel().attr(http_client_key);
+        AsyncConnector connector = null;
+
+        //重新创建
+        if (flag) {
+            connector = AsyncConnector.getInstance();
+            connector.renewClient();
+            http_client.set(connector);
+
+            System.out.println("加载动态库 重新重建连接");
+            logger.info("【SSLService getHttpClient】create a connector , " + connector.hashCode());
+            return connector;
+        } else {
+            connector = http_client.get();
+            System.out.println("下载应用 复用连接");
+            logger.info("【SSLService getHttpClient】using an existed connector , " + connector.hashCode());
+            return connector;
+        }
+    }
+
+//    private Channel getDllChannel(ChannelHandlerContext ctx) throws SSLException, InterruptedException {
+//        Attribute<Channel> attr_channel = ctx.channel().attr(dll_client_key);
+//        Channel ch = attr_channel.get();
+//        //如果不存在则去连接dll服务器
+//        if (ch == null) {
+//            System.out.println("dll channel is null ,connect to the dll server...");
+//            DllClient dll = new DllClient();
+//            ch = dll.run(DllClient.HOST, DllClient.PORT, ctx.channel());
+//            attr_channel.set(ch);
+//        }
+//        return ch;
+//    }
+}

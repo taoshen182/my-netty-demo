@@ -1,0 +1,556 @@
+select `i`.`iKEY` AS `id`,`i`.`NAME` AS `name`,`i`.`DICID` AS `dicId`,`i`.`ODB` AS `odb` from `item` `i` where (isnull(`i`.`DISABLED`) or (`i`.`DISABLED` <> '1')) 
+
+
+union select distinct `department`.`DEPTID` AS `deptid`,`department`.`DEPTNAME` AS `deptname`,'department' AS `department`,'' AS `odb` from `department` where ((`department`.`SCRAP` <> '0') or isnull(`department`.`SCRAP`)) 
+
+-- 用户
+union select distinct e.USERID userid,e.username username,'users' AS `users`,'odb' AS `odb` from `employee` `e` where ((`e`.`SCRAP` <> '0') or isnull(`e`.`SCRAP`))
+
+-- 部门-用户
+union select distinct userid userid,username username, concat('deptusers_',deptid),userid as odb from employee where ((scrap <> '0') or isnull(scrap))
+
+-- 用户
+union select distinct userid userid,username username, 'employee' ,userid as odb from employee where ((scrap <> '0') or isnull(scrap))
+
+-- 性别
+union select DISTINCT '0','男','gender','2' 
+union select DISTINCT '1','女','gender','3'
+
+-- 部门
+-- union select d.DEPTNAME id,d.DEPTNAME name,'department','0' from basic.department d where (d.SCRAP <> '0' or d.SCRAP is null)  -- 部门
+
+-- 基础状态
+union select DISTINCT '1','有效','state','0'
+union select DISTINCT '0','无效','state','1'
+
+union select '0','N','whether','0' from dual  -- 是否标志
+union select '1','Y','whether','1' from dual
+
+union select DISTINCT '0','不需要审核','is_audit_all','0' from dual		-- 是否需要审核
+union select DISTINCT '1','限制必须审核','is_audit_all','1' from dual
+union select DISTINCT '2','可以审核','is_audit_all','2' from dual
+
+union select '1','审核标志(0:不审核1:限制必须审核2:可以审核)','is_audit','' from dual -- 管理员设置好,可以改值,但不允许随便加 pengfei
+
+-- 模板
+union select DISTINCT '0','任务','billtype2','' from dual  -- 单据类型
+union select DISTINCT '1','项目','billtype2','' from dual
+
+-- 项目
+union select DISTINCT '0','0.8','difficulty','0'  -- 难度系数
+union select DISTINCT '1','1.0','difficulty','1' 
+union select DISTINCT '2','1.2','difficulty','2' 
+union select DISTINCT '3','1.5','difficulty','3'
+
+union select DISTINCT '0','软件项目','projecttype','0' from dual  -- 项目类别
+union select DISTINCT '1','新产品项目','projecttype','1' from dual
+union select DISTINCT '2','增强类产品项目','projecttype','2' from dual
+union select DISTINCT '3','维护类产品项目','projecttype','3' from dual
+
+union select DISTINCT '0','项目经理','projectmanager','0' from dual -- 项目经理的默认角色名
+
+union select DISTINCT br.id,br.name,rbr.bill_id,br.id as odb from basic.b_role br INNER JOIN basic.re_bill_role rbr on br.id=rbr.b_role_id	-- 角色
+
+union select DISTINCT id,concat(grade,'       ',''+rate),'grade_rate',grade as odb  from basic.re_grade_rate where status='1'   -- 等级费率
+
+union select d.DEPTNAME id,d.DEPTNAME name,'sponsor','0' from basic.department d where (d.SCRAP <> '0' or d.SCRAP is null)   -- 发起方
+union select e.USERNAME id,e.USERNAME name,'sponsor','1' from basic.employee e where (e.SCRAP <> '0' or e.SCRAP is null)		 -- 发起方
+
+union select p.id,concat(p.project_No,'    ',p.project_Name),'project_all','' from project.project_pj p -- 所有的项目
+
+union select p.id,concat(p.project_No,'    ',p.project_Name),'project_ing','' from project.project_pj p left join business.point_bu b on p.point_bu_id=b.id 
+where b.billtype='project_pj' and  b.attributeid in (select id from business.attribute_bu where type in ('2','4')) 
+ and b.flow_bu_id in (select id from  business.flow_bu where enable='0')	-- 查询可用的项目(可供其它模块调用的)
+ 
+union select '0','物品','budget_class','0' from dual		-- 项目预算的分类
+union select '1','人员','budget_class','1' from dual
+union select '2','外包','budget_class','2' from dual
+
+union select '0','物品','budget_class2','0' from dual		-- 项目预算的分类(供计划,实际所用,计划和实际是不能添加人员费用这块)
+union select '2','外包','budget_class2','2' from dual
+
+union select '0','预估','budget_type','0' from dual
+union select '1','计划','budget_type','1' from dual
+union select '2','实际','budget_type','2' from dual
+
+union select '0','收入','acct_subject_type','0' from dual		-- 记账类别标志
+union select '1','支出','acct_subject_type','1' from dual
+
+union select '0','现金','payment_pattern','0' from dual	-- 付款方式
+union select '1','转账','payment_pattern','1' from dual
+
+union select a.id,concat(a.`no`,'    ',a.`name`,'    ',(case a.type when '0' then '收入' when '1' then '支出' end)),'acct_subject',a.type as odb from basic.acct_subject a where a.isvalid='1' or a.isvalid is null	-- 记账科目类别
+
+union select '0','草稿','accounting_status','0' from dual		-- 记账单的状态
+union select '1','审核','accounting_status','1' from dual
+union select '2','已生效','accounting_status','2' from dual
+union select '3','取消','accounting_status','3' from dual
+
+union select '','编辑中','projectplan_status','0' from dual 	-- 项目计划状态
+union select '0','编辑中','projectplan_status','1' from dual		
+union select '1','审核','projectplan_status','2' from dual
+union select '2','审核打回','projectplan_status','3' from dual
+union select '3','审核通过','projectplan_status','4' from dual
+union select '4','关闭','projectplan_status','5' from dual
+
+union
+select '0','很满意','validategrade','0' from dual    -- 验收单中的验收评级
+union
+select '1','满意','validategrade','1' from dual
+union
+select '2','一般','validategrade','2' from dual
+union
+select '3','不满意','validategrade','3' from dual
+union
+select '4','很不满意','validategrade','4' from dual
+
+union
+select '0','待验收','validatestauts','' from dual   -- 验收单的状态
+union
+select '1','已验收','validatestauts','' from dual
+
+
+ --  任务开始 ----------------------------------------------------------------
+
+union select DISTINCT '0','软件任务','taskclass','0' from dual  -- 任务类别
+union select DISTINCT '1','硬件任务','taskclass','1' from dual
+
+union select DISTINCT '0','0.8','landmark','0'  -- 里程碑标志
+union select DISTINCT '1','1.0','landmark','1' 
+
+union select DISTINCT '0','否','audit','0'  -- 是否需要审核标志(两个审核公用)
+union select DISTINCT '1','是','audit','1' 
+
+union
+select '0','研发工作','workplanstype','' from dual  -- 工作计划类别 
+union
+select '1','业务工作','workplanstype','' from dual
+union
+select '4','日常工作','workplanstype','' from dual
+union
+select '2','测试工作','workplanstype','' from dual
+
+union
+select '0','未开始','executantstatus','' from dual      -- 执行人状态
+union
+select '1','进行中','executantstatus','' from dual
+union
+select '2','完成','executantstatus','' from dual
+union
+select '3','结束','executantstatus','' from dual
+union
+select '4','重新完成','executantstatus','' from dual
+
+union
+select '0','未指派','requireassign','' from dual      -- 任务需求的指派状态
+union
+select '1','已指派','requireassign','' from dual
+
+union
+select '0','未指派','bugassign','' from dual      -- 任务bug的指派状态
+union
+select '1','已指派','bugassign','' from dual
+
+
+union
+select '0','未指派','assignstatus','' from dual      -- 任务指派状态
+union
+select '1','已指派','assignstatus','' from dual
+union
+select '2','指派完成','assignstatus','' from dual
+
+
+union
+select '0','进行中','workstate','' from dual      -- 工作日报的工作状态
+union
+select '1','完成','workstate','' from dual
+
+
+
+ -- 查询当前执行人可申请延期的记录
+union
+select u.id,concat(t.task_no,'       ',t.name,'       ',''+u.billno),concat(u.user_id,'delay'),''    
+from test.testtask_qa t,task.re_task_executant_ta u  where  t.id=u.task_id  and  t.task_type='0'  and  t.point_bu_id  in
+ ( select id  from  business.point_bu  b where  (b.billtype='task_ta' or b.billtype='all')
+  and  b.attributeid in (select id from business.attribute_bu where type in ('2','3','4','6','7','8','9','10','11','12','13') ) 
+ )
+
+
+ -- 查询当前执行人可关联的测试任务 暂时删除的条件 and tu.status != '3' 
+union
+select td.id , concat(td.`no`,'    ',td.title),concat(tu.user_id,'userTestDetail'),'' 
+from test.testtask_detail_qa td , test.testtask_user_qa tu 
+where td.id = tu.testdetail_id
+
+
+ -- 查询可关联任务
+union select t.id,concat(t.task_no,'    ',t.name),'task_ing','' from test.testtask_qa t where t.point_bu_id  in        	-- (可供其它模块调用的)
+ ( select id  from  business.point_bu  b where  (b.billtype='task_ta' or b.billtype='all')
+  and  b.attributeid in (select id from business.attribute_bu where type in ('2','3','4','6','7','8','9','10','11','12','13') ) 
+ )
+
+
+
+ -- 延期单状态
+ union
+ select '0','草稿','delaystatus','' from dual
+ union
+ select '1','审核中','delaystatus','' from dual
+ union
+ select '2','审核通过','delaystatus','' from dual
+ union
+ select '3','审核不通过','delaystatus','' from dual
+ 
+  --  任务结束 ----------------------------------------------------------------
+
+
+ --  业务流开始 ----------------------------------------------------------------
+
+union select DISTINCT '0','有效','flowenable','0' from dual  -- 状态
+union select DISTINCT '1','无效','flowenable','1' from dual
+union select DISTINCT '2','编辑中','flowenable','2' from dual
+
+union select DISTINCT '0','日报无须','dailyflag','0' from dual  -- 状态
+union select DISTINCT '1','日报必须','dailyflag','1' from dual
+union select DISTINCT '2','日报可以','dailyflag','2' from dual
+
+union select DISTINCT '0','无计划','planflag','0' from dual  -- 状态
+union select DISTINCT '1','可以计划','planflag','1' from dual
+
+
+-- union select DISTINCT '0','内置节点','innerpoint','' from dual  -- 节点类型
+-- union select DISTINCT '1','外置节点','innerpoint','' from dual
+
+union select DISTINCT '0','单线','linetype','' from dual  -- 链路类型
+union select DISTINCT '1','复合线','linetype','' from dual
+
+
+
+union select DISTINCT 'task_ta','任务单','billtype','' from dual  -- 单据类型
+union select DISTINCT 'project_pj','项目单','billtype','' from dual
+union select DISTINCT 'require_rq','需求单','billtype','' from dual
+union select DISTINCT 'testtask_qa','测试任务单','billtype','' from dual
+-- union select DISTINCT 'all','','billtype','' from dual
+
+
+union select DISTINCT '0','开始','pointsymbol','' from dual  -- 节点位置标志
+-- union select DISTINCT '1','结束','pointsymbol','' from dual
+union select DISTINCT '2','既是开始又是结束','pointsymbol','' from dual
+union select DISTINCT '3','中间','pointsymbol','' from dual
+
+
+-- union select DISTINCT '0','开始','pointattribute','' from dual  -- 节点属性
+-- union select DISTINCT '1','进行中','pointattribute','' from dual
+-- union select DISTINCT '2','结束','pointattribute','' from dual
+
+union select DISTINCT p.id,p.name,p.flow_bu_id,p.name as odb from business.point_bu p 	 -- 节点
+
+union select DISTINCT b.id,b.name,'pointRole',b.id as odb from basic.b_role b where b.type='2'	-- 业务流节点角色
+
+-- 业务流程
+union select f.id,f.`name`,'b_flow',f.id as odb from business.flow_bu f  where f.enable='0' 
+
+-- 下级节点
+union
+select t.id,t.name,concat(u.pre_point_id,'nextpoint'),''    
+from business.point_bu t ,business.link_bu u  where  t.id=u.next_point_id 
+
+union
+select t.id,t.name,concat(u.pre_point_id,'tanextpoint'),'' from business.point_bu t ,business.link_bu u where t.id=u.next_point_id and (t.billtype='all' or t.billtype='task_ta')  -- 任务的下级节点
+
+union
+select t.id,t.name,concat(u.pre_point_id,'tenextpoint'),'' from business.point_bu t ,business.link_bu u where t.id=u.next_point_id and (t.billtype='all' or t.billtype='testtask_qa')  -- 测试的下级节点
+
+union
+select t.id,t.name,concat(u.pre_point_id,'pjnextpoint'),'' from business.point_bu t ,business.link_bu u where t.id=u.next_point_id and (t.billtype='all' or t.billtype='project_pj')  -- 项目的下级节点
+
+union
+select t.id,t.name,concat(u.pre_point_id,'rqnextpoint'),'' from business.point_bu t ,business.link_bu u where t.id=u.next_point_id and (t.billtype='all' or t.billtype='require_rq')  -- 需求项的下级节点
+
+--  业务流结束 ----------------------------------------------------------------
+
+-- 产品
+
+-- ----------------------------------- 工作流-----------------flow start-------------------------------------------
+
+union select '0','普通','importance','0' from dual	-- 重要性
+union select '1','重要','importance','1' from dual
+
+union select '0','并签','point_jointly','0' from dual	-- 会签的规划
+union select '1','会签','point_jointly','1' from dual
+
+union select '0','启动时通知','flow_notify_type','0' from dual	-- 流程通知点
+union select '1','结束时通知','flow_notify_type','1' from dual
+
+union select '','编辑中','flow_enable','0' from dual	-- 流程的状态
+union select '1','已生效','flow_enable','1' from dual
+union select '0','未生效','flow_enable','2' from dual
+
+union select '2','编辑中','flow_enable2','0' from dual	-- 流程的状态(仅供工作流列表搜索所用,是为了区分用户选择的是编辑中,还是全部)
+union select '1','已生效','flow_enable2','1' from dual
+union select '0','未生效','flow_enable2','2' from dual
+
+
+union select '0','提交意见','point_audit_rule','0' from dual -- 审批规则,是全部同意了才能继续下一步,还是有不同意的也可以继续
+union select '1','同意继续','point_audit_rule','1' from dual
+
+
+union select '0','开始','point_symbol','0' from dual  -- 节点位置标志
+union select '1','结束','point_symbol','2' from dual
+union select '2','既是开始又是结束','point_symbol','3' from dual
+union select '' ,'中间','point_symbol','1' from dual
+
+union select p.id,p.name,concat('flow',p.flow_id),'' from workflow.point_fl p where p.enable='1' and (p.prepare is null or p.prepare!='2') -- 查询某一流程下的节点
+
+union select p.id,p.name,concat('eflow',p.flow_id),'' from workflow.point_fl p where p.enable='1' and (p.prepare is null or p.prepare!='2') and (p.symbol='1' or p.symbol is null) -- 查询某一流程下的所有节点（除开始以外）
+
+union select p.id,p.name,concat('sflow',p.flow_id),'' from workflow.point_fl p where p.enable='1' and (p.prepare is null or p.prepare!='2') and (p.symbol='0' or p.symbol is null) -- 查询某一流程下的所有节点（除结束以外）
+
+union select '0','sum','m_condition','0' from dual	-- 工作流条件
+union select '1','count','m_condition','1' from dual	-- 工作流条件
+union select '2','and','m_condition','2' from dual	-- 工作流条件
+union select '3','or','m_condition','3' from dual	-- 工作流条件
+union select '4','包含','m_condition','4' from dual	-- 工作流条件
+union select '5','不包含','m_condition','5' from dual	-- 工作流条件
+union select '6','bwtween','m_condition','6' from dual	-- 工作流条件
+
+
+
+union select DISTINCT f.id,f.name,'projectflow','' from workflow.flow_fl f where enable='1'  and (type='project_pj' or type is null) -- 查询某一类型单据的可用的流程
+union select DISTINCT f.id,f.name,'productversionflow','' from workflow.flow_fl f where enable='1'  and (type='version_pt' or type is null) -- 查询产品版本可用流程
+union select DISTINCT f.id,f.name,'requireflow','' from workflow.flow_fl f where enable='1'  and (type='require_rq' or type is null) -- 查询需求单可用流程
+union select DISTINCT f.id,f.name,'taskflow','' from workflow.flow_fl f where enable='1'  and (type='testtask_qa' or type is null)	-- 查询任务单可用的流程
+union select DISTINCT f.id,f.name,'kenflow','' from workflow.flow_fl f where enable='1'  and (type='kens' or type is null)	-- 查询知识库可用的流程 
+union select DISTINCT f.id,f.name,'planflow','' from workflow.flow_fl f where enable='1'  and (type='plan_pj' or type is null)	-- 查询知识库可用的流程 
+union select DISTINCT f.id,f.name,'accountingflow','' from workflow.flow_fl f where enable='1'  and (type='accounting' or type is null)	-- 查询记账可用的流程 
+union select DISTINCT f.id,f.name,'requireupdateflow','' from workflow.flow_fl f where enable='1'  and (type='requireupdatedetail_rq' or type is null)	-- 查询需求变更可用的流程 
+
+ 
+union select 'project_pj','项目','flow_bill_type','0' from dual -- 工作流单据类型 :项目
+union select 'testtask_qa','任务','flow_bill_type','2' from dual -- 工作流单据类型 :任务
+union select 'version_pt','产品版本','flow_bill_type','3' from dual -- 工作流单据类型 :产品版本
+union select 'require_rq','需求单','flow_bill_type','4' from dual -- 工作流单据类型 :需求单
+union select 'kens','知识库','flow_bill_type','5' from dual -- 工作流单据类型 :知识库
+union select 'plan_pj','项目计划','flow_bill_type','6' from dual -- 工作流单据类型 :项目计划
+union select 'accounting','记账','flow_bill_type','7' from dual -- 工作流单据类型 :项目计划
+union select 'requireupdatedetail_rq','需求变更','flow_bill_type','8' from dual -- 工作流单据类型 :需求变更
+-- -------------------------------------------flow end-----------------------------------------------------
+
+-- 项目任务模板
+union select t.id,t.`name`,'project_temp',t.createdate as odb from basic.template t where t.bill_type='1' and t.enable='1' -- 项目模板
+union select t.id,t.`name`,'task_temp',t.createdate as odb from basic.template t where t.bill_type='0' and t.enable='1'	-- 任务模板
+
+
+-- ------------------------------业务角色--------------------------------------
+union select '0','普通单据','bill_role_type','0' from dual
+union select '1','工作流','bill_role_type','0' from dual
+union select '2','业务流','bill_role_type','0' from dual
+
+union select b.id,b.name,'brole',b.id as odb from basic.b_role b where b.type='0' and  (isvalid is null or isvalid='1')  -- 查询出所有普通单据类型的角色
+
+-- 模板显示类型
+union select DISTINCT 'text','text','showtype','0' from dual
+union select DISTINCT 'radio','radio','showtype','1' from dual
+union select DISTINCT 'select','select','showtype','2' from dual
+
+
+
+
+-- 需求单自定义类别require_type
+union select DISTINCT '0','类别','require_type','0' from dual
+union select DISTINCT '1','来源','require_type','1' from dual
+union select DISTINCT '2','重要性','require_type','2' from dual
+union select DISTINCT '3','优先级','require_type','3' from dual
+-- 需求单type查询----
+union select DISTINCT r.id,r.name,'requiretype','' from requirement.require_type r where r.type='0'
+-- 需求单source查询--
+union select DISTINCT r.id,r.name,'requiresource','' from requirement.require_type r where r.type='1'
+-- 需求单priority查询----
+union select DISTINCT r.id,r.name,'requirepri','' from requirement.require_type r where r.type='2'
+-- 需求单项优先级查询----
+union select DISTINCT r.id,r.name,'requiredetailpri','' from requirement.require_type r where r.type='3'
+-- 需求单受理状态----
+union select DISTINCT '0','草稿','requirestate','0' from dual
+union select DISTINCT '1','已提交','requirestate','1' from dual
+union select DISTINCT '2','已审核','requirestate','2' from dual
+-- union select DISTINCT r.id,r.name,'requireaccept','' from requirement.require_type r where r.type='4'---
+-- 需求项受理状态require_type
+union select DISTINCT '1','受理','requireaccept','0' from dual
+union select DISTINCT '2','拒绝','requireaccept','1' from dual
+union select DISTINCT '3','暂缓','requireaccept','2' from dual
+-- 需求项 -------
+union select distinct rq.id,concat(rq.serial,'    ',rq.name),'requiredetail','' from requirement.requiredetail_rq rq where rq.State='1' and (rq.valid!='0' or rq.valid is null) and rq.id not in (select r.requiredetailid from requirement.require_relate_bill r)
+-- 项目 ---
+union select distinct pj.id,concat(pj.project_No,'    ',pj.project_Name),'requireproject', '' from project.project_pj pj 
+-- 任务 ---
+union select distinct ta.id,concat(ta.task_no,'    ',ta.name),'requiretask', '' from test.testtask_qa ta where ta.task_type='0'
+-- 测试任务 ---
+union select distinct qa.id,concat(qa.task_no,'    ',qa.name),'requiretest', '' from test.testtask_qa qa where qa.task_type!='0'
+#union select distinct v.dicid,v.dicid,'optiontype',v.dicid from basic.v_dictionary
+ 
+#union select DISTINCT id,concat(serial,'       ',name),'requiredetails',createdate from requirement.requiredetail_rq2 r
+
+-- 产品生命周期类型 --
+union select DISTINCT '0','软件','phasetype','0' from dual
+union select DISTINCT '1','硬件','phasetype','1' from dual
+-- 产品生命周期 --
+union select distinct pp.id,pp.name,'productphase', '' from product.product_pt_phase pp
+-- 产品 --
+union select distinct pt.id,pt.name,'product','' from product.product_pt pt where pt.type='1'
+-- 产品生效的版本 --
+union SELECT distinct vt.id,concat(pt.name,'       ',vt.versionno),'productversion','' from product.product_pt pt,product.version_pt vt where pt.id=vt.productid and vt.enabled='1' and vt.state='4'
+-- 产品是否有效 --
+union select DISTINCT '1','有效','enable','0'
+union select DISTINCT '0','无效','enable','1'
+-- 产品类型 --
+union select DISTINCT '0','产品','product_sort','0'
+union select DISTINCT '1','模块','product_sort','1'
+union select DISTINCT '2','元件','product_sort','2'
+-- 知识库等级 --
+union
+select DISTINCT '1','A','kengrade','1' from dual
+union
+select DISTINCT '2','B','kengrade','2' from dual
+union
+select DISTINCT '3','C','kengrade','3' from dual
+union
+select DISTINCT '4','D','kengrade','4' from dual
+union
+select DISTINCT '5','E','kengrade','5' from dual
+
+union
+select '1','激活','active','' from dual  
+union
+select '0','未激活','active','' from dual
+
+union
+select '1','成功','result','' from dual 
+union
+select '0','失败','result','' from dual
+
+union
+select '1','运行中','runstatus','' from dual 
+union
+select '0','停止','runstatus','' from dual
+
+union
+select '0','每分钟','taskcycle','' from dual 
+union
+select '1','每小时','taskcycle','' from dual
+union
+select '2','每天','taskcycle','' from dual
+union
+select '3','每周','taskcycle','' from dual
+union
+select '4','每月','taskcycle','' from dual
+union
+select '5','只一次','taskcycle','' from dual
+union
+select '6','立即开始','taskcycle','' from dual
+
+
+
+union
+select 'product','产品','wydtype','' from dual 
+union
+select 'project','项目','wydtype','' from dual 
+union
+select 'require','需求','wydtype','' from dual 
+union
+select 'problem','问题','wydtype','' from dual 
+union
+select 'bug','bug','wydtype','' from dual 
+
+
+union
+select 'fq','我发起的','wydusertype','' from dual 
+union
+select 'zr','我负责的','wydusertype','' from dual 
+union
+select 'zx','我执行的','wydusertype','' from dual 
+union
+select 'cy','我参与的','wydusertype','' from dual 
+
+
+#测试任务模块的视图，请各位胞不要将自己视图写入该范围内
+
+-- BUG属性类别TTS
+union select DISTINCT 'bugType','缺陷类型','bugAttribute','0' from dual -- 缺陷类型
+union select DISTINCT 'bugSeriousLv','严重程度','bugAttribute','1' from dual -- 缺陷严重程度
+union select DISTINCT 'bugPossibility','产生可能性','bugAttribute','2' from dual -- 缺陷产生可能性
+union select DISTINCT 'bugPriority','优先级','bugAttribute','3' from dual -- 缺陷优先级
+union select DISTINCT 'bugOrigin','起源','bugAttribute','4' from dual -- 缺陷起源
+union select DISTINCT 'bugSourceOf','来源','bugAttribute','5' from dual -- 缺陷来源
+union select DISTINCT 'bugSource','根源','bugAttribute','6' from dual -- 缺陷根源
+-- BUG属性TTS
+union select DISTINCT b.id,b.name,'bugType','0' from test.bugattribute_qa b where b.type = 'bugType'  -- 缺陷类型
+union select DISTINCT b.id,b.name,'bugSeriousLv','0' from test.bugattribute_qa b where b.type = 'bugSeriousLv' -- 缺陷严重程度
+union select DISTINCT b.id,b.name,'bugPossibility','0' from test.bugattribute_qa b where b.type = 'bugPossibility' -- 缺陷产生可能性
+union select DISTINCT b.id,b.name,'bugPriority','0' from test.bugattribute_qa b where b.type = 'bugPriority' -- 缺陷优先级
+union select DISTINCT b.id,b.name,'bugOrigin','0' from test.bugattribute_qa b where b.type = 'bugOrigin' -- 缺陷起源
+union select DISTINCT b.id,b.name,'bugSourceOf','0' from test.bugattribute_qa b where b.type = 'bugSourceOf' -- 缺陷来源
+union select DISTINCT b.id,b.name,'bugSource','0' from test.bugattribute_qa b where b.type = 'bugSource' -- 缺陷根源
+-- 测试案例TTS
+union select DISTINCT id,name,'caseType','0' from test.casetype_qa where state = '1' -- 案例类型
+-- 测试等级TTS
+union select DISTINCT '0','低','caseLv','0' from dual
+union select DISTINCT '1','中','caseLv','1' from dual
+union select DISTINCT '2','高','caseLv','2' from dual
+-- 测试案例公私属性TTS
+union select DISTINCT '0','公用案例','public_type','0' from dual 
+union select DISTINCT '1','私有案例','public_type','1' from dual
+-- 测试任务类型TTS
+union select DISTINCT '0','功能性测试','testtype','0' from dual 
+union select DISTINCT '1','单元测试','testtype','1' from dual
+union select DISTINCT '2','集成测试','testtype','2' from dual
+union select DISTINCT '3','系统测试','testtype','3' from dual
+union select DISTINCT '4','验收测试','testtype','4' from dual
+-- 测试任务角色TTS
+union select DISTINCT '0','负责人','testusertype','0' from dual
+union select DISTINCT '1','执行人','testusertype','1' from dual
+-- 测试任务的人员TTS
+union select DISTINCT t.id,e.USERNAME,CONCAT(t.testtask_id,'testtaskUser'),'' from test.testtask_user_qa t ,basic.employee e where t.user_id = e.USERID
+-- 测试状态TTS
+union select DISTINCT '0','待测','teststatus','0' from dual
+union select DISTINCT '1','测试通过','teststatus','1' from dual
+union select DISTINCT '2','测试未通过','teststatus','2' from dual
+
+-- 测试任务状态TTS
+union select DISTINCT '0','建立中','testtaskstatus','0' from dual
+union select DISTINCT '1','审核中','testtaskstatus','1' from dual
+union select DISTINCT '2','等待执行','testtaskstatus','2' from dual
+union select DISTINCT '3','任务进行中','testtaskstatus','3' from dual
+union select DISTINCT '4','等待验收','testtaskstatus','4' from dual
+union select DISTINCT '5','任务结束','testtaskstatus','5' from dual
+union select DISTINCT '6','重新开始','testtaskstatus','6' from dual
+
+-- 测试项状态TTS
+union select DISTINCT '0','未开始','testdetailstatus','0' from dual
+union select DISTINCT '1','进行中','testdetailstatus','1' from dual
+union select DISTINCT '2','完成','testdetailstatus','2' from dual
+
+
+-- 测试任务配置关联项 需求部分
+union select DISTINCT '10','所有需求','testrequireflag','0' from dual
+union select DISTINCT '11','项目需求','testrequireflag','1' from dual
+union select DISTINCT '13','其他需求','testrequireflag','3' from dual
+-- 测试任务配置关联项 任务部分
+union select DISTINCT '20','所有任务','testtaskflag','0' from dual
+union select DISTINCT '21','项目任务','testtaskflag','1' from dual
+union select DISTINCT '23','其他任务','testtaskflag','3' from dual
+-- 测试任务配置关联项 BUG部分
+union select DISTINCT '30','所有BUG','testbugflag','0' from dual
+
+
+-- 测试任务项配置关联项
+union select DISTINCT '12','需求','detailRelateflag','0' from dual
+union select DISTINCT '20','任务','detailRelateflag','1' from dual
+union select DISTINCT '31','BUG','detailRelateflag','2' from dual
+
+
+#测试任务模块的视图，请各位同胞不要将自己视图写入该范围内
+
+union
+select '0','打印模板','mbtype','' from dual 
+union
+select '1','工作模板','mbtype','' from dual 

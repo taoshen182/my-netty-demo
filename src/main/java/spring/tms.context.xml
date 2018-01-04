@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:beans="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+
+    <bean id="terServerService" class="pax.service.terserver.impl.TerServerServiceImpl"></bean>
+    <bean id="terCompanyService" class="pax.service.tercompany.impl.TerCompanyServiceImpl"></bean>
+    <bean id="terTypeService" class="pax.service.tertype.impl.TerTypeServiceImpl"></bean>
+    <bean id="appService" class="pax.service.app.impl.AppServiceImpl"></bean>
+    <bean id="appVersionService" class="pax.service.appversion.impl.AppVersionServiceImpl"></bean>
+    <bean id="terminalsService" class="pax.service.terminals.impl.TerminalsServiceImpl"></bean>
+    <bean id="tpmService" class="pax.service.tpm.impl.TpmServiceImpl"></bean>
+    <bean id="instService" class="pax.service.inst.impl.InstServiceImpl"></bean>
+    <bean id="merchantService" class="pax.service.merchant.impl.MerchantServiceImpl"></bean>
+    <bean id="paramService" class="pax.service.param.impl.ParamServiceImpl"></bean>
+    <bean id="pTemplateService" class="pax.service.param.impl.PTemplateServiceImpl"></bean>
+    <bean id="scriptService" class="pax.service.script.impl.ScriptServiceImpl"></bean>
+    <bean id="dllPathService" class="pax.service.tercompany.impl.DllPathServiceImpl"></bean>
+    <bean id="planTaskService" class="pax.service.plantask.impl.PlanTaskServiceImpl"></bean>
+
+</beans>

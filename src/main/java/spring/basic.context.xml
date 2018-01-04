@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-2.5.xsd"
+       default-lazy-init="false" default-autowire="no">
+	
+	<bean id="userService" class="tool.basic.service.impl.UserServiceImpl"></bean>
+	<bean id="deptService" class="tool.basic.service.impl.DeptServiceImpl"></bean>
+	<bean id="roleUserService" class="tool.basic.service.impl.RoleUserServiceImpl"></bean>
+	<bean id="roleService" class="tool.basic.service.impl.RoleServiceImpl"></bean>
+	<bean id="bRoleService" class="tool.basic.service.impl.BRoleServiceImpl"></bean>
+	<bean id="gradeRateService" class="tool.basic.service.impl.GradeRateServiceImpl"></bean>
+	<bean id="mobanService" class="tool.basic.service.impl.MobanServiceImpl"></bean>
+	<bean id="holidayService" class="tool.basic.service.impl.HolidayServiceImpl"></bean>
+	<bean id="bRoleFunService" class="tool.basic.service.impl.BRoleFunServiceImpl"></bean>
+	<bean id="billFunService" class="tool.basic.service.impl.BillFunServiceImpl"></bean>
+	<bean id="funService" class="tool.basic.service.impl.FunServiceImpl"></bean>
+	<bean id="enumService" class="tool.base.impl.EnumServiceImpl" />
+	<!--
+	
+	<bean id="acctSubjectService" class="tool.basic.service.impl.AcctSubjectServiceImpl"></bean>
+	<bean id="accountingService" class="tool.basic.service.impl.AccountingServiceImpl"></bean>
+	<bean id="templateService" class="tool.basic.service.impl.TemplateServiceImpl"></bean>
+	 -->
+	
+	<!-- <bean id="dataSource" class="sand.jdo.DBCPFactoryBean">
+		<property name="driver" value="oracle.jdbc.driver.OracleDriver"/>
+		<property name="url" value="jdbc:oracle:thin:@www.pcwcn.net:1521:core"/>
+		<property name="userName" value="core"/>
+		<property name="password" value="core"/>
+		<property name="maxActive" value="20"/>
+	</bean>
+	
+	<bean id="dataSourceContext" class="sand.jdo.DataSourceContext" init-method="init">
+		<property name="dataSource">
+			<ref local="dataSource"/>
+		</property>
+	</bean>
+	 -->
+</beans>

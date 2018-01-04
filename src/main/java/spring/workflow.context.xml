@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-2.5.xsd"
+	   default-lazy-init="false" default-autowire="no">
+
+	<bean id="conditionService" class="tool.workflow.service.impl.ConditionServiceImpl"></bean>
+	<bean id="flowCaseService" class="tool.workflow.service.impl.FlowCaseServiceImpl"></bean>
+	<bean id="flowLinkService" class="tool.workflow.service.impl.FlowLinkServiceImpl"></bean>
+	<bean id="flowService" class="tool.workflow.service.impl.FlowServiceImpl"></bean>
+	<bean id="pointCaseService" class="tool.workflow.service.impl.PointCaseServiceImpl"></bean>
+	<bean id="pointRoleService" class="tool.workflow.service.impl.PointRoleServiceImpl"></bean>
+	<bean id="pointUserService" class="tool.workflow.service.impl.PointUserServiceImpl"></bean>
+	<bean id="pointService" class="tool.workflow.service.impl.PointServiceImpl"></bean>
+	<bean id="jobService" class="tool.workflow.service.impl.JobServiceImpl"></bean>
+	<bean id="flowNotifyService" class="tool.workflow.service.impl.FlowNotifyServiceImpl"></bean>
+	<bean id="ptableService" class="tool.workflow.service.impl.PtableServiceImpl"></bean>
+	<bean id="impowerService" class="tool.workflow.service.impl.ImpowerServiceImpl"></bean>
+	<bean id="workFlowEngineService" class="tool.workflow.service.impl.WorkFlowEngineServiceImpl">
+		<!--
+            <property name="workFlowsServiceMapps">
+                <map>
+                    <entry key="0" value-ref="project_WorkFlowServiceImpl" />
+                </map>
+            </property> -->
+	</bean>
+	<bean id="flowBillContext" class="tool.workflow.FlowBillContext">
+		<property name="actionMap">
+			<map>
+				<entry key="app" value="app.AppActionHandler" />
+				<entry key="resource" value="resource.ResourcePkgAH" />
+			</map>
+		</property>
+		<property name="bill_type_map">
+			<map>
+
+				<entry key="app" value="App流程" />
+				<entry key="resource" value="资源包流程" />
+			</map>
+		</property>
+	</bean>
+	<!-- <bean id="project_WorkFlowServiceImpl" class="sand.actionhandler.project.Project_WorkFlowServiceImpl"></bean> -->
+</beans>
